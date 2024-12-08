@@ -9,25 +9,17 @@ import SwiftUI
 
 @main
 struct avpenterprisetestApp: App {
-
-    @State private var appModel = AppModel()
+    @StateObject private var appModel = AppModel()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environment(appModel)
+                .environmentObject(appModel)
         }
 
+        // Define the immersive space here
         ImmersiveSpace(id: appModel.immersiveSpaceID) {
-            ImmersiveView()
-                .environment(appModel)
-                .onAppear {
-                    appModel.immersiveSpaceState = .open
-                }
-                .onDisappear {
-                    appModel.immersiveSpaceState = .closed
-                }
+            EmptyView() // Minimal placeholder; functionality is handled in ContentView
         }
-        .immersionStyle(selection: .constant(.progressive), in: .progressive)
     }
 }

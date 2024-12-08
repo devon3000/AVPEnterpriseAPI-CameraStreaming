@@ -7,15 +7,13 @@
 
 import SwiftUI
 
-/// Maintains app-wide state
-@MainActor
-@Observable
-class AppModel {
-    let immersiveSpaceID = "ImmersiveSpace"
-    enum ImmersiveSpaceState {
-        case closed
-        case inTransition
-        case open
-    }
-    var immersiveSpaceState = ImmersiveSpaceState.closed
+class AppModel: ObservableObject {
+    @Published var immersiveSpaceState: ImmersiveSpaceState = .closed
+    let immersiveSpaceID = "IDImmersiveSpace"
+}
+
+enum ImmersiveSpaceState {
+    case open
+    case closed
+    case inTransition
 }
