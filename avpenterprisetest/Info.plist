@@ -8,6 +8,8 @@
 	<string>For testing of enterprise API functionality, internal use only</string>
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>For testing of enterprise API functionality, internal use only</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>For testing of enterprise API functionality, internal use only</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationPreferredDefaultSceneSessionRole</key>

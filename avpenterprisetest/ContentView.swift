@@ -1,6 +1,7 @@
 import SwiftUI
 import RealityKit
 import ARKit
+import AVFoundation
 
 struct ContentView: View {
     @EnvironmentObject var appModel: AppModel
@@ -84,13 +85,15 @@ struct ContentView: View {
         .padding()
         .onAppear {
             checkCameraAccess()
+            checkMicrophoneAccess()
+            
         }
     }
 
 
     private func sendFrameToStream(pixelBuffer: CVPixelBuffer) {
         if isStreaming {
-            streamManager.sendFrame(pixelBuffer: pixelBuffer)
+           // streamManager.sendFrame(pixelBuffer: pixelBuffer)
         }
     }
 
@@ -102,6 +105,15 @@ struct ContentView: View {
         }
     }
 
+    private func checkMicrophoneAccess() {
+        AVCaptureDevice.requestAccess(for: .audio) { granted in
+            if granted {
+                print("Microphone access granted.")
+            } else {
+                print("Microphone access denied.")
+            }
+        }
+    }
     private func testCamera() {
         guard cameraAccessStatus == "Camera access is supported!" else {
             print("Cannot start camera: access not supported.")
