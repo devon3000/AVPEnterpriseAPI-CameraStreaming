@@ -16,7 +16,8 @@ extension Notification.Name {
 
 extension YouTubeStreamManager: AudioCaptureDelegate {
     func audioCapture(_ audioCapture: AudioCapture, buffer: AVAudioBuffer, time: AVAudioTime) {
-        rtmpStream.append(buffer, when: time)
+      // this was used in the earlier 1.9.7 version
+        //  rtmpStream.append(buffer, when: time)
     }
 }
 
@@ -27,40 +28,87 @@ class YouTubeStreamManager {
     private let streamKey = "syw0-13w1-j29p-xumw-43jv" // Replace with your actual stream key
     private var currentCameraPosition: AVCaptureDevice.Position = .front
     private let audioCapture = AudioCapture()
+    private let mixer = MediaMixer()
 
     init() {
-        
-        setupRTMPStream()
-        startMonitoringRTMPConnection()
+        rtmpStream = RTMPStream(connection: rtmpConnection)
     }
-
     
     // MARK: - Setup Methods
 
-    private func setupRTMPStream() {
+    private func setupRTMPStream() async throws {
         rtmpStream = RTMPStream(connection: rtmpConnection)
 
-        // Configure audio settings
-        rtmpStream.audioSettings.bitRate = 32_000 // 32 kbps
+        // Create and configure AudioCodecSettings
+        var audioSettings = AudioCodecSettings()
+        audioSettings.bitRate = 64 * 1000  // Set bitrate to 64 kbps
+        audioSettings.downmix = true       // Enable downmixing for multi-channel input
+        audioSettings.channelMap = nil     // Optional: Specify channel mapping if needed
 
-        // Configure video settings using VideoCodecSettings
-        rtmpStream.videoSettings = VideoCodecSettings(
-            videoSize: .init(width: 1280, height: 720),
-            bitRate: 2_000_000, // 2 Mbps
-            profileLevel: kVTProfileLevel_H264_Baseline_AutoLevel as String
+        // Apply the audio settings to the stream
+        await rtmpStream.setAudioSettings(audioSettings)
+
+        // Create and configure VideoCodecSettings
+        var videoSettings = VideoCodecSettings(
+            videoSize: .init(width: 854, height: 480),  // Set video resolution
+            bitRate: 640 * 1000,  // Set bitrate to 640 kbps
+            profileLevel: kVTProfileLevel_H264_Baseline_3_1 as String,  // Set H.264 profile level
+            scalingMode: .trim,  // Set scaling mode
+            bitRateMode: .average,  // Set bitrate mode
+            maxKeyFrameIntervalDuration: 2,  // Set keyframe interval duration
+            allowFrameReordering: nil,  // Optional: Allow frame reordering
+            isHardwareEncoderEnabled: true  // Enable hardware encoding
         )
-        
-        attachVideo()
-        
+
+        // Apply the video settings to the stream
+        await rtmpStream.setVideoSettings(videoSettings)
+                
         // Set up audio capture using AVAudioEngine (attachAudio is not included in visionOS build of Haishinkit)
         audioCapture.delegate = self
         audioCapture.startRunning()
-        
+
+        await configureStream()
+
         // Add event listener for RTMP connection status
-        rtmpConnection.addEventListener(.rtmpStatus, selector: #selector(handleRTMPEvent), observer: self)
+        //rtmpConnection.addEventListener(.rtmpStatus, selector: #selector(handleRTMPEvent), observer: self)
+    }
+    
+    
+    func configureStream() async {
+        
+        // Add RTMPStream as an output to the mixer
+        await mixer.addOutput(rtmpStream)
+        
+        // Attach the camera
+        if let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) {
+            do {
+                try await mixer.attachVideo(camera)
+                print("Camera attached successfully")
+            } catch {
+                print("Error attaching camera: \(error)")
+            }
+        } else {
+            print("Front camera not available")
+        }
+        
+        // Attach the microphone
+        if let microphone = AVCaptureDevice.default(for: .audio) {
+            do {
+                // this is the function missing for VisionOS
+               // try await mixer.attachAudio(microphone)
+                print("Microphone attached successfully")
+            } catch {
+                print("Error attaching microphone: \(error)")
+            }
+        } else {
+            print("Microphone not available")
+        }
+        
+        // Add the mixer output to the rtmpStream
+        await mixer.addOutput(rtmpStream)
     }
 
-
+/*
     private func attachVideo() {
         guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: currentCameraPosition) else {
             print("No video device found.")
@@ -85,11 +133,21 @@ class YouTubeStreamManager {
         print("Video device attached: \(currentCameraPosition == .front ? "Front" : "Back").")
     }
 
+*/
+    
     // MARK: - Streaming Control
 
-    func startStreaming() {
+    func startStreaming() async {
         print("[Info] Starting video + audio stream...")
-
+        
+        do {
+            print ("Calling setupRTMPStream")
+            try await setupRTMPStream()
+            print("setupRTMPStream returned successfully")
+        } catch {
+            print("Error setupRTMPStream: \(error)")
+        }
+        
         Task {
             do {
                 // Connect to RTMP server
@@ -107,11 +165,15 @@ class YouTubeStreamManager {
         }
     }
 
-    func stopStreaming() {
+    func stopStreaming() async {
         print("Stopping the stream...")
-        rtmpStream.close()
-        rtmpConnection.close()
-        print("Stream stopped successfully.")
+        do {
+            try await rtmpStream.close()
+            try await rtmpConnection.close()
+            print("Stream stopped successfully.")
+        } catch {
+            print("Error stopping the stream: \(error)")
+        }
     }
 
     // MARK: - RTMP Monitoring
@@ -126,6 +188,7 @@ class YouTubeStreamManager {
         )
     }
 
+    /*
     @objc private func handleRTMPEvent(notification: Notification) {
         let event = Event.from(notification) // `Event.from` is not optional
         print("RTMP Event: \(event)")
@@ -144,7 +207,8 @@ class YouTubeStreamManager {
                 print("RTMP: Unknown status code \(code)")
             }
         }
-    }
+    }*/
+    
     
     @objc private func handleRTMPStatus(notification: Notification) {
         guard let data = notification.userInfo as? [String: Any],

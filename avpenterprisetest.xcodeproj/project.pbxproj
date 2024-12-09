@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		1422B67F2D0185B6009C690F /* HaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = 1422B67E2D0185B6009C690F /* HaishinKit */; };
+		1411F50A2D06E32700EBC7D0 /* HaishinKit in Frameworks */ = {isa = PBXBuildFile; productRef = 1411F5092D06E32700EBC7D0 /* HaishinKit */; };
 		145462EB2D0170DD00567C3F /* Enterprise.license in Resources */ = {isa = PBXBuildFile; fileRef = 145462EA2D0170DD00567C3F /* Enterprise.license */; };
 		14CA9F6B2D001B4800BB8327 /* RealityKitContent in Frameworks */ = {isa = PBXBuildFile; productRef = 14CA9F6A2D001B4800BB8327 /* RealityKitContent */; };
 /* End PBXBuildFile section */
@@ -60,7 +60,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1422B67F2D0185B6009C690F /* HaishinKit in Frameworks */,
+				1411F50A2D06E32700EBC7D0 /* HaishinKit in Frameworks */,
 				14CA9F6B2D001B4800BB8327 /* RealityKitContent in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -124,7 +124,7 @@
 			name = avpenterprisetest;
 			packageProductDependencies = (
 				14CA9F6A2D001B4800BB8327 /* RealityKitContent */,
-				1422B67E2D0185B6009C690F /* HaishinKit */,
+				1411F5092D06E32700EBC7D0 /* HaishinKit */,
 			);
 			productName = avpenterprisetest;
 			productReference = 14CA9F652D001B4800BB8327 /* avpenterprisetest.app */;
@@ -182,7 +182,7 @@
 			mainGroup = 14CA9F5C2D001B4800BB8327;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				1422B67D2D0185B6009C690F /* XCRemoteSwiftPackageReference "HaishinKit" */,
+				1411F5082D06E32700EBC7D0 /* XCLocalSwiftPackageReference "../../HaishinKit.swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 14CA9F662D001B4800BB8327 /* Products */;
@@ -496,21 +496,16 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		1422B67D2D0185B6009C690F /* XCRemoteSwiftPackageReference "HaishinKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/shogo4405/HaishinKit.swift";
-			requirement = {
-				kind = exactVersion;
-				version = 1.9.7;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		1411F5082D06E32700EBC7D0 /* XCLocalSwiftPackageReference "../../HaishinKit.swift" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../HaishinKit.swift;
 		};
-/* End XCRemoteSwiftPackageReference section */
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		1422B67E2D0185B6009C690F /* HaishinKit */ = {
+		1411F5092D06E32700EBC7D0 /* HaishinKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 1422B67D2D0185B6009C690F /* XCRemoteSwiftPackageReference "HaishinKit" */;
 			productName = HaishinKit;
 		};
 		14CA9F6A2D001B4800BB8327 /* RealityKitContent */ = {
