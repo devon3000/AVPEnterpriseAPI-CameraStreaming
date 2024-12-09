@@ -102,10 +102,12 @@ extension FrontCameraCapture: AVCaptureVideoDataOutputSampleBufferDelegate {
             return
         }
 
-        // Get the presentation timestamp
         let presentationTimeStamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+        print("Captured frame at PTS: \(presentationTimeStamp)")
 
-        // Encode the frame
-        videoEncoder.encode(pixelBuffer: pixelBuffer, presentationTimeStamp: presentationTimeStamp)
+        // Wrap the pixelBuffer in a managed reference to ensure it remains valid
+        let pixelBufferCopy = Unmanaged.passRetained(pixelBuffer).takeRetainedValue()
+
+        videoEncoder.encode(pixelBuffer: pixelBufferCopy, presentationTimeStamp: presentationTimeStamp)
     }
 }

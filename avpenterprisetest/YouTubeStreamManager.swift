@@ -57,14 +57,74 @@ class YouTubeStreamManager {
         let handler = AudioHandler(mixer: mixer)
         self.audioHandler = handler
 
+        // OPTION 1
         // Initialize the FrontCameraCapture
+        // this doesn't work
         let capture = FrontCameraCapture(width: 854, height: 480, frameRate: 30)
         self.frontCameraCapture = capture
+        
+        // OPTION 2
+        // Attach the Persona Video
+        // This works
+        // try await attachPersonaVideo()
 
         // Connect the MediaMixer to RTMPStream
         await mixer.addOutput(rtmpStream)
-
         print("[Info] Mixer output connected to RTMPStream.")
+
+        // Check stream initialization for SPS/PPS and keyframes
+        //validateStreamConfiguration()
+    }
+    
+    @objc private func validateStreamConfiguration(notification: Notification) {
+        let sampleBuffer = notification.object as! CMSampleBuffer
+
+        // Proceed with your validation logic
+        if let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer) {
+            let parameterSets = self.getParameterSets(from: formatDesc)
+            if let sps = parameterSets.sps {
+                print("SPS detected with size: \(sps.count)")
+            }
+            if let pps = parameterSets.pps {
+                print("PPS detected with size: \(pps.count)")
+            }
+        }
+    }
+    
+    private func getParameterSets(from formatDescription: CMFormatDescription) -> (sps: Data?, pps: Data?) {
+        var sps: UnsafePointer<UInt8>?
+        var spsLength: Int = 0
+        var pps: UnsafePointer<UInt8>?
+        var ppsLength: Int = 0
+        var parameterSetCount: Int = 0
+
+        let status = CMVideoFormatDescriptionGetH264ParameterSetAtIndex(
+            formatDescription,
+            parameterSetIndex: 0,
+            parameterSetPointerOut: &sps,
+            parameterSetSizeOut: &spsLength,
+            parameterSetCountOut: &parameterSetCount,
+            nalUnitHeaderLengthOut: nil
+        )
+
+        guard status == noErr, parameterSetCount > 1 else {
+            print("[Error] Failed to retrieve SPS/PPS from format description. Status: \(status)")
+            return (nil, nil)
+        }
+
+        CMVideoFormatDescriptionGetH264ParameterSetAtIndex(
+            formatDescription,
+            parameterSetIndex: 1,
+            parameterSetPointerOut: &pps,
+            parameterSetSizeOut: &ppsLength,
+            parameterSetCountOut: nil,
+            nalUnitHeaderLengthOut: nil
+        )
+
+        return (
+            sps: sps.map { Data(bytes: $0, count: spsLength) },
+            pps: pps.map { Data(bytes: $0, count: ppsLength) }
+        )
     }
     
     
@@ -98,14 +158,14 @@ class YouTubeStreamManager {
      }
 
     @objc private func handleEncodedFrame(notification: Notification) {
-        // Directly cast the notification object as CMSampleBuffer
+        // Directly cast notification.object as CMSampleBuffer
         let sampleBuffer = notification.object as! CMSampleBuffer
 
+        // Pass the sampleBuffer to the mixer
         Task {
             await mixer.append(sampleBuffer)
         }
     }
-
    
     // MARK: - Streaming Control
 
