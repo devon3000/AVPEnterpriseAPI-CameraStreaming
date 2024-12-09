@@ -23,6 +23,7 @@ class YouTubeStreamManager {
     private var currentCameraPosition: AVCaptureDevice.Position = .front
     //private let audioCapture = AudioCapture()
     private var audioHandler: AudioHandler?
+    private var frontCameraCapture: FrontCameraCapture?
     private let mixer = MediaMixer()
 
     init() {
@@ -34,47 +35,40 @@ class YouTubeStreamManager {
     private func setupRTMPStream() async throws {
         rtmpStream = RTMPStream(connection: rtmpConnection)
 
-        // Create and configure AudioCodecSettings
+        // Configure audio settings
         var audioSettings = AudioCodecSettings()
-        audioSettings.bitRate = 64 * 1000  // Set bitrate to 64 kbps
-        audioSettings.downmix = true       // Enable downmixing for multi-channel input
-        audioSettings.channelMap = nil     // Optional: Specify channel mapping if needed
-
-        // Apply the audio settings to the stream
+        audioSettings.bitRate = 64 * 1000
+        audioSettings.downmix = true
         await rtmpStream.setAudioSettings(audioSettings)
 
-        // Create and configure VideoCodecSettings
+        // Configure video settings
         var videoSettings = VideoCodecSettings(
-            videoSize: .init(width: 854, height: 480),  // Set video resolution
-            bitRate: 640 * 1000,  // Set bitrate to 640 kbps
-            profileLevel: kVTProfileLevel_H264_Baseline_3_1 as String,  // Set H.264 profile level
-            scalingMode: .trim,  // Set scaling mode
-            bitRateMode: .average,  // Set bitrate mode
-            maxKeyFrameIntervalDuration: 2,  // Set keyframe interval duration
-            allowFrameReordering: nil,  // Optional: Allow frame reordering
-            isHardwareEncoderEnabled: true  // Enable hardware encoding
+            videoSize: .init(width: 854, height: 480),
+            bitRate: 640 * 1000,
+            profileLevel: kVTProfileLevel_H264_Baseline_3_1 as String,
+            scalingMode: .trim,
+            bitRateMode: .average,
+            maxKeyFrameIntervalDuration: 2,
+            isHardwareEncoderEnabled: true
         )
-
-        // Apply the video settings to the stream
         await rtmpStream.setVideoSettings(videoSettings)
-        
-        // Initialize the AudioHandler asynchronously
+
+        // Initialize the AudioHandler
         let handler = AudioHandler(mixer: mixer)
-        handler.configureAudio() // This is synchronous within the AudioHandler
         self.audioHandler = handler
 
-        // Connect MediaMixer output to RTMPStream
-        await mixer.addOutput(rtmpStream)
-        print("Mixer output successfully connected to RTMPStream.")
-        
-        try await configureStream()
+        // Initialize the FrontCameraCapture
+        let capture = FrontCameraCapture(width: 854, height: 480, frameRate: 30)
+        self.frontCameraCapture = capture
 
-        // Add event listener for RTMP connection status
-        //rtmpConnection.addEventListener(.rtmpStatus, selector: #selector(handleRTMPEvent), observer: self)
+        // Connect the MediaMixer to RTMPStream
+        await mixer.addOutput(rtmpStream)
+
+        print("[Info] Mixer output connected to RTMPStream.")
     }
     
     
-    func configureStream() async throws {
+    func attachPersonaVideo() async throws {
         do {
             // Optionally configure Video
             if let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front) {
@@ -88,38 +82,75 @@ class YouTubeStreamManager {
         }
     }
 
+    private func setupFrontCameraCapture() {
+         let capture = FrontCameraCapture(width: 854, height: 480, frameRate: 30)
+         self.frontCameraCapture = capture
+
+         // Listen for encoded frames
+         NotificationCenter.default.addObserver(
+             self,
+             selector: #selector(handleEncodedFrame(notification:)),
+             name: .didEncodeFrame,
+             object: nil
+         )
+
+         capture.start()
+     }
+
+    @objc private func handleEncodedFrame(notification: Notification) {
+        // Directly cast the notification object as CMSampleBuffer
+        let sampleBuffer = notification.object as! CMSampleBuffer
+
+        Task {
+            await mixer.append(sampleBuffer)
+        }
+    }
 
    
     // MARK: - Streaming Control
 
     func startStreaming() async {
         print("[Info] Starting video + audio stream...")
-        
         do {
-            print ("Calling setupRTMPStream")
+            // Step 1: Set up the RTMP stream (audio, video, mixer setup)
             try await setupRTMPStream()
-            print("setupRTMPStream returned successfully")
+
+            // Step 2: Connect to the RTMP server
+            print("[Info] Connecting to RTMP server...")
+            let connectResponse = try await rtmpConnection.connect(rtmpURL)
+            print("[Info] RTMP connection response: \(connectResponse)")
+
+            // Step 3: Publish the stream
+            print("[Info] Publishing stream...")
+            let publishResponse = try await rtmpStream.publish(streamKey)
+            print("[Info] RTMP publish response: \(publishResponse)")
+
+            // Step 4: Start media data flow
+            startMediaFlow()
         } catch {
-            print("Error setupRTMPStream: \(error)")
-        }
-        
-        Task {
-            do {
-                // Connect to RTMP server
-                let connectResponse = try await rtmpConnection.connect(rtmpURL)
-                print("[Info] RTMP connection response: \(connectResponse)")
-
-                // Publish the stream
-                let publishResponse = try await rtmpStream.publish(streamKey)
-                print("[Info] RTMP publish response: \(publishResponse)")
-
-                print("[Info] Streaming started successfully.")
-            } catch {
-                print("[Error] Starting streaming failed: \(error.localizedDescription)")
-            }
+            print("[Error] Starting streaming failed: \(error.localizedDescription)")
+            retryStreaming()
         }
     }
 
+    private func startMediaFlow() {
+        // Step 4a: Start audio processing
+        audioHandler?.configureAudio()
+        print("[Info] AudioHandler started.")
+
+        // Step 4b: Start video capture
+        frontCameraCapture?.start()
+        print("[Info] FrontCameraCapture started.")
+    }
+    
+    private func retryStreaming() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+            Task {
+                await self.startStreaming()
+            }
+        }
+    }
+    
     func stopStreaming() async {
         print("Stopping the stream...")
         do {

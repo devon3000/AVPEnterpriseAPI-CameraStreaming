@@ -15,6 +15,7 @@ extension NSNotification.Name {
 class VideoEncoder {
     private var compressionSession: VTCompressionSession?
     private let frameDuration: CMTime
+    let kVTCompressionPropertyKey_EmitSPSAndPPS = "EmitSPSAndPPS" as CFString
 
     init(width: Int, height: Int, frameRate: Int = 30) {
         // Calculate frame duration based on frame rate
@@ -33,13 +34,16 @@ class VideoEncoder {
                     print("Encoding error or missing sample buffer")
                     return
                 }
-                // Handle the encoded frame
-                VideoEncoder.handleEncodedFrame(sampleBuffer)
+
+                // Check if the frame is a keyframe
+
+                
+                // Post the encoded sampleBuffer for further processing
+                NotificationCenter.default.post(name: .didEncodeFrame, object: sampleBuffer)
             },
             refcon: nil,
             compressionSessionOut: &compressionSession
         )
-
         guard status == noErr else {
             print("Failed to create compression session: \(status)")
             return
@@ -49,7 +53,11 @@ class VideoEncoder {
         VTSessionSetProperty(compressionSession!, key: kVTCompressionPropertyKey_ProfileLevel, value: kVTProfileLevel_H264_Baseline_3_1 as CFTypeRef)
         VTSessionSetProperty(compressionSession!, key: kVTCompressionPropertyKey_RealTime, value: kCFBooleanTrue)
         VTSessionSetProperty(compressionSession!, key: kVTCompressionPropertyKey_AverageBitRate, value: 2_000_000 as CFTypeRef)
-        VTSessionSetProperty(compressionSession!, key: kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration, value: 2 as CFTypeRef) // Max 2-second interval for keyframes
+        VTSessionSetProperty(compressionSession!, key: kVTCompressionPropertyKey_ProfileLevel, value: kVTProfileLevel_H264_Baseline_3_1 as CFTypeRef) // Baseline profile
+        VTSessionSetProperty(compressionSession!, key: kVTCompressionPropertyKey_AllowFrameReordering, value: kCFBooleanFalse) // Disable B-frames
+        VTSessionSetProperty(compressionSession!, key: kVTCompressionPropertyKey_MaxKeyFrameInterval, value: 30 as CFTypeRef) // Force keyframe every 30 frames
+        VTSessionSetProperty(compressionSession!, key: kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration, value: 2 as CFTypeRef) // Keyframe every 2 seconds
+        VTSessionSetProperty(compressionSession!, key: kVTCompressionPropertyKey_EmitSPSAndPPS, value: kCFBooleanTrue)
     }
 
     func encode(pixelBuffer: CVPixelBuffer, presentationTimeStamp: CMTime) {
