@@ -1,4 +1,5 @@
 # Vision Pro Enterprise API Main Camera Streaming #
+<img width="600" alt="Screenshot 2024-12-09 at 7 20 49 PM" src="https://github.com/user-attachments/assets/7f968cb4-f3cd-4c28-a48c-0cda82b17e0b">
 
 This example project demonstrates how to access the Vision Pro main front-mounted camera using the new [Enterprise API entitlements](https://developer.apple.com/documentation/visionOS/building-spatial-experiences-for-business-apps-with-enterprise-apis) available for private apps. 
 
