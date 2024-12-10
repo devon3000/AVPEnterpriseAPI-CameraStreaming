@@ -23,8 +23,8 @@ class YouTubeStreamManager {
     private var currentCameraPosition: AVCaptureDevice.Position = .front
     //private let audioCapture = AudioCapture()
     private var audioHandler: AudioHandler?
-    private var frontCameraCapture: FrontCameraCapture?
     private let mixer = MediaMixer()
+    private var frameCount: Int64 = 0 // Track frame count
 
     init() {
         rtmpStream = RTMPStream(connection: rtmpConnection)
@@ -53,15 +53,21 @@ class YouTubeStreamManager {
         )
         await rtmpStream.setVideoSettings(videoSettings)
 
+        
+        
         // Initialize the AudioHandler
         let handler = AudioHandler(mixer: mixer)
         self.audioHandler = handler
 
         // OPTION 1
         // Initialize the FrontCameraCapture
-        // this doesn't work
-        let capture = FrontCameraCapture(width: 854, height: 480, frameRate: 30)
-        self.frontCameraCapture = capture
+        // Add observer for encoded frame notifications
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleEncodedFrame(notification:)),
+            name: .didEncodeFrame,
+            object: nil
+        )
         
         // OPTION 2
         // Attach the Persona Video
@@ -142,28 +148,18 @@ class YouTubeStreamManager {
         }
     }
 
-    private func setupFrontCameraCapture() {
-         let capture = FrontCameraCapture(width: 854, height: 480, frameRate: 30)
-         self.frontCameraCapture = capture
-
-         // Listen for encoded frames
-         NotificationCenter.default.addObserver(
-             self,
-             selector: #selector(handleEncodedFrame(notification:)),
-             name: .didEncodeFrame,
-             object: nil
-         )
-
-         capture.start()
-     }
-
+    
+    
     @objc private func handleEncodedFrame(notification: Notification) {
-        // Directly cast notification.object as CMSampleBuffer
-        let sampleBuffer = notification.object as! CMSampleBuffer
+        guard let sampleBuffer = notification.object as! CMSampleBuffer? else {
+            print("[Error] Notification does not contain a valid CMSampleBuffer.")
+            return
+        }
 
-        // Pass the sampleBuffer to the mixer
+        // Pass the sample buffer to the MediaMixer
         Task {
             await mixer.append(sampleBuffer)
+            print("[Debug] Encoded frame appended to mixer.")
         }
     }
    
@@ -194,13 +190,12 @@ class YouTubeStreamManager {
     }
 
     private func startMediaFlow() {
-        // Step 4a: Start audio processing
+
+        // Start audio processing
         audioHandler?.configureAudio()
         print("[Info] AudioHandler started.")
 
-        // Step 4b: Start video capture
-        frontCameraCapture?.start()
-        print("[Info] FrontCameraCapture started.")
+        // FUTURE - should check for valid front camera
     }
     
     private func retryStreaming() {

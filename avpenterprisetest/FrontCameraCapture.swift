@@ -9,17 +9,18 @@
 // Encoding frames using VideoEncoder.
 // Notifying listeners when encoded frames are available.
 
+
+/*
 import AVFoundation
 import Foundation
 
 class FrontCameraCapture: NSObject {
-    private let videoEncoder: VideoEncoder
+    let videoEncoder: VideoEncoder 
     private let captureSession: AVCaptureSession
     private let videoOutput: AVCaptureVideoDataOutput
 
     init(width: Int, height: Int, frameRate: Int) {
-        // Initialize the video encoder with specified parameters
-        self.videoEncoder = VideoEncoder(width: width, height: height, frameRate: frameRate)
+        self.videoEncoder = VideoEncoder(width: Int32(width), height: Int32(height), frameRate: frameRate)
         self.captureSession = AVCaptureSession()
         self.videoOutput = AVCaptureVideoDataOutput()
         super.init()
@@ -98,16 +99,12 @@ extension FrontCameraCapture: AVCaptureVideoDataOutputSampleBufferDelegate {
         from connection: AVCaptureConnection
     ) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
-            print("Failed to get pixel buffer from sample buffer")
+            print("Failed to get pixel buffer")
             return
         }
 
         let presentationTimeStamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-        print("Captured frame at PTS: \(presentationTimeStamp)")
-
-        // Wrap the pixelBuffer in a managed reference to ensure it remains valid
-        let pixelBufferCopy = Unmanaged.passRetained(pixelBuffer).takeRetainedValue()
-
-        videoEncoder.encode(pixelBuffer: pixelBufferCopy, presentationTimeStamp: presentationTimeStamp)
+        videoEncoder.encode(pixelBuffer: pixelBuffer, presentationTimeStamp: presentationTimeStamp)
     }
 }
+*/

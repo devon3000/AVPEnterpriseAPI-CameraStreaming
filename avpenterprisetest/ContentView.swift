@@ -15,6 +15,7 @@ struct ContentView: View {
     @State private var frameCount = 0
     @State private var pixelBuffer: CVPixelBuffer?
     @State private var isCameraRunning = false
+    @State private var videoEncoder: VideoEncoder?
 
     let placeholderImage = Image(systemName: "camera")
 
@@ -69,6 +70,7 @@ struct ContentView: View {
                         }
                     } else {
                         do {
+                            setupVideoEncoder()
                             try await streamManager.startStreaming()
                         } catch {
                             print("Failed to start streaming: \(error.localizedDescription)")
@@ -90,11 +92,28 @@ struct ContentView: View {
         }
     }
 
+    private func setupVideoEncoder() {
+        // Create a new VideoEncoder instance
+        videoEncoder = VideoEncoder(width: 854, height: 480, frameRate: 30)
+        print("[Debug] VideoEncoder initialized.")
+    }
 
-    private func sendFrameToStream(pixelBuffer: CVPixelBuffer) {
-        if isStreaming {
-           // streamManager.sendFrame(pixelBuffer: pixelBuffer)
+    private func sendFrameToEncoder(pixelBuffer: CVPixelBuffer) {
+        guard isStreaming else {
+            print("[Debug] Skipping frame as streaming is not active.")
+            return
         }
+
+        guard let encoder = videoEncoder else {
+            print("[Error] VideoEncoder is not initialized.")
+            return
+        }
+
+        let timestamp = CMTime(value: Int64(frameCount), timescale: 30)
+        frameCount += 1
+
+        print("[Debug] Sending frame to encoder with timestamp: \(timestamp)")
+        encoder.encode(pixelBuffer: pixelBuffer, presentationTimeStamp: timestamp)
     }
 
     private func checkCameraAccess() {
@@ -179,9 +198,7 @@ struct ContentView: View {
                 if let sample = frame.sample(for: .left) {
                     DispatchQueue.main.async {
                         pixelBuffer = sample.pixelBuffer
-                        frameCount += 1
-                        //print("Frame \(frameCount) received.")
-                        sendFrameToStream(pixelBuffer: sample.pixelBuffer) // Stream the frame
+                        sendFrameToEncoder(pixelBuffer: sample.pixelBuffer)
                     }
                 }
             }
