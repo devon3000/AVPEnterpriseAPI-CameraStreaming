@@ -28,3 +28,7 @@ This code is licensed under the MIT open source license and is free and unencumb
 
 ## Video Demo ##
 https://www.youtube.com/watch?v=Y2DNCtZxP-k
+
+## Implementation Notes ##
+Since the front camera doesn't present as an '''AVCaptureDevice''' but rather as a '''CameraFrameProvider''', we can't use HaishinKit's simple '''attachVideo''' method to get a video stream for the RTMP streaming. Instead we have to access individual frames and encode them using the Apple VideoToolbox framework. Frame output from the encoder is sent to HaishinKit via the '''append''' method.
+
