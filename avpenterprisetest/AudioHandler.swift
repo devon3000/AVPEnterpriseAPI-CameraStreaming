@@ -8,9 +8,6 @@
 import HaishinKit
 import AVFoundation
 
-import HaishinKit
-import AVFoundation
-
 class AudioHandler {
     private let mixer: MediaMixer
     private let audioEngine = AVAudioEngine()
